@@ -74,7 +74,6 @@ def upload_files(files: List[UploadFile] = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/chat")
 @traceable(name="multi_agent_chat")
 def traced_multi_agent_run(question: str):
     return run_multi_agent_system(question)
