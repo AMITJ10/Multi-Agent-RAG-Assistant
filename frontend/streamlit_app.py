@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 
-API_URL = "http://127.0.0.1:8000"
+API_URL = "https://multi-agent-rag-assistant.onrender.com"
 
 st.set_page_config(
     page_title="Multi-Agent RAG Assistant",
@@ -67,7 +67,7 @@ with st.sidebar:
 
                 except requests.exceptions.ConnectionError:
                     st.error(
-                        "Backend is not running. Start FastAPI on http://127.0.0.1:8000"
+                        "Backend is not running. Start FastAPI on https://multi-agent-rag-assistant.onrender.com"
                     )
             # else:
             #     st.info("Documents already indexed.")
