@@ -1,7 +1,7 @@
 import os
 import shutil
 from typing import List
-
+from langsmith import traceable
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
 
@@ -75,8 +75,14 @@ def upload_files(files: List[UploadFile] = File(...)):
 
 
 @app.post("/chat")
+@traceable(name="multi_agent_chat")
+def traced_multi_agent_run(question: str):
+    return run_multi_agent_system(question)
+
+
+@app.post("/chat")
 def chat(request: ChatRequest):
-    result = run_multi_agent_system(request.question)
+    result = traced_multi_agent_run(request.question)
 
     return {
         "answer": result.get("final_answer"),

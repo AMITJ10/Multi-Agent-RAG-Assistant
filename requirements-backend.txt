@@ -5,3 +5,4 @@ pypdf
 requests
 scikit-learn
 langgraph
+langsmith
