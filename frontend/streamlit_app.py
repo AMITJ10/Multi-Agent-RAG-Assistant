@@ -99,9 +99,7 @@ with st.sidebar:
                     st.error("Upload timed out. Please try a smaller PDF.")
 
                 except requests.exceptions.ConnectionError:
-                    st.error(
-                        "Backend is not reachable. Please check whether Render backend is running."
-                    )
+                    st.error("Backend is not reachable. Please check Render backend.")
 
                 except Exception as e:
                     st.error(f"Unexpected upload error: {str(e)}")
@@ -143,15 +141,10 @@ if st.button("Ask AI"):
                 st.error("Something went wrong while getting the answer.")
 
         except requests.exceptions.ReadTimeout:
-            st.error(
-                "The backend is taking too long to answer. "
-                "Please try again or ask a shorter question."
-            )
+            st.error("The backend is taking too long. Please try again.")
 
         except requests.exceptions.ConnectionError:
-            st.error(
-                "Backend is not reachable. Please check whether Render backend is running."
-            )
+            st.error("Backend is not reachable. Please check Render backend.")
 
         except Exception as e:
             st.error(f"Unexpected chat error: {str(e)}")
