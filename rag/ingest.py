@@ -6,7 +6,9 @@ from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
-
+from functools import lru_cache
+from langchain_huggingface import HuggingFaceEmbeddings
+from app.config import EMBEDDING_MODEL
 from app.config import (
     DATA_DIR,
     CHROMA_PATH,
@@ -17,9 +19,11 @@ from app.config import (
 )
 
 
+
+
+@lru_cache(maxsize=1)
 def get_embedding_model():
     return HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
-
 
 def clear_data_folder():
     os.makedirs(DATA_DIR, exist_ok=True)
