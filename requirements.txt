@@ -1,12 +1,2 @@
-streamlit
-fastapi
-uvicorn
-langchain
-langgraph
-langchain-community
-langchain-huggingface
-sentence-transformers
-pypdf
-qdrant-client
-requests
-python-multipart
+streamlit==1.41.1
+requests==2.32.3
