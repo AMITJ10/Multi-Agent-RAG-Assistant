@@ -1,10 +1,9 @@
 DATA_DIR = "data"
-CHROMA_PATH = "vector_db/chroma"
-COLLECTION_NAME = "current_uploaded_docs"
+INDEX_PATH = "vector_db/tfidf_index.pkl"
 
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+MAX_FILES = 5
+MAX_FILE_SIZE_MB = 10
 
 CHUNK_SIZE = 1200
 CHUNK_OVERLAP = 100
 TOP_K = 5
-MAX_FILES = 10

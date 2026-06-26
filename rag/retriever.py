@@ -1,69 +1,65 @@
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
+import os
+import pickle
 
-from app.config import (
-    CHROMA_PATH,
-    COLLECTION_NAME,
-    EMBEDDING_MODEL,
-    TOP_K,
-)
+from sklearn.metrics.pairwise import cosine_similarity
+
+from app.config import INDEX_PATH, TOP_K
 
 
-def get_embedding_model():
-    return HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+def load_index():
+    if not os.path.exists(INDEX_PATH):
+        return None
 
-
-def get_vectorstore():
-    return Chroma(
-        collection_name=COLLECTION_NAME,
-        persist_directory=CHROMA_PATH,
-        embedding_function=get_embedding_model(),
-    )
+    with open(INDEX_PATH, "rb") as f:
+        return pickle.load(f)
 
 
 def retrieve_documents(query: str):
-    try:
-        vectorstore = get_vectorstore()
+    index = load_index()
 
-        results = vectorstore.max_marginal_relevance_search(
-            query,
-            k=TOP_K,
-            fetch_k=20,
-        )
-
-        docs = []
-
-        for doc in results:
-            docs.append({
-                "text": doc.page_content,
-                "source": doc.metadata.get("source", ""),
-                "page": doc.metadata.get("page", ""),
-            })
-
-        return docs
-
-    except Exception:
+    if not index:
         return []
+
+    vectorizer = index["vectorizer"]
+    matrix = index["matrix"]
+    documents = index["documents"]
+    metadatas = index["metadatas"]
+
+    query_vec = vectorizer.transform([query])
+    scores = cosine_similarity(query_vec, matrix).flatten()
+
+    ranked_indices = scores.argsort()[::-1][:TOP_K]
+
+    docs = []
+
+    for idx in ranked_indices:
+        if scores[idx] <= 0:
+            continue
+
+        docs.append({
+            "text": documents[idx],
+            "source": metadatas[idx].get("source", ""),
+            "page": metadatas[idx].get("page", ""),
+            "score": float(scores[idx]),
+        })
+
+    return docs
 
 
 def get_all_documents():
-    try:
-        vectorstore = get_vectorstore()
-        data = vectorstore.get()
+    index = load_index()
 
-        docs = []
-
-        documents = data.get("documents", [])
-        metadatas = data.get("metadatas", [])
-
-        for text, metadata in zip(documents, metadatas):
-            docs.append({
-                "text": text,
-                "source": metadata.get("source", ""),
-                "page": metadata.get("page", ""),
-            })
-
-        return docs
-
-    except Exception:
+    if not index:
         return []
+
+    documents = index["documents"]
+    metadatas = index["metadatas"]
+
+    return [
+        {
+            "text": text,
+            "source": metadata.get("source", ""),
+            "page": metadata.get("page", ""),
+        }
+        for text, metadata in zip(documents, metadatas)
+    ]

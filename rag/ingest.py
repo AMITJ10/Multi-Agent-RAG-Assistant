@@ -1,29 +1,13 @@
 import os
+import pickle
 import shutil
 from typing import List
 
 from pypdf import PdfReader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
-from functools import lru_cache
-from langchain_huggingface import HuggingFaceEmbeddings
-from app.config import EMBEDDING_MODEL
-from app.config import (
-    DATA_DIR,
-    CHROMA_PATH,
-    COLLECTION_NAME,
-    EMBEDDING_MODEL,
-    CHUNK_SIZE,
-    CHUNK_OVERLAP,
-)
+from sklearn.feature_extraction.text import TfidfVectorizer
 
+from app.config import DATA_DIR, INDEX_PATH, CHUNK_SIZE, CHUNK_OVERLAP
 
-
-
-@lru_cache(maxsize=1)
-def get_embedding_model():
-    return HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
 
 def clear_data_folder():
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -34,12 +18,12 @@ def clear_data_folder():
             os.remove(path)
 
 
-def reset_vector_store():
-    if os.path.exists(CHROMA_PATH):
-        shutil.rmtree(CHROMA_PATH, ignore_errors=True)
+def reset_index():
+    if os.path.exists(INDEX_PATH):
+        os.remove(INDEX_PATH)
 
 
-def extract_pdf_pages(file_path: str):
+def extract_pdf_text(file_path: str):
     reader = PdfReader(file_path)
     pages = []
 
@@ -56,47 +40,66 @@ def extract_pdf_pages(file_path: str):
     return pages
 
 
+def chunk_text(text: str):
+    chunks = []
+    start = 0
+
+    while start < len(text):
+        end = start + CHUNK_SIZE
+        chunk = text[start:end]
+
+        if chunk.strip():
+            chunks.append(chunk.strip())
+
+        start += CHUNK_SIZE - CHUNK_OVERLAP
+
+    return chunks
+
+
 def ingest_files(file_paths: List[str]):
-    reset_vector_store()
+    reset_index()
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-    )
-
-    texts = []
+    documents = []
     metadatas = []
 
     for file_path in file_paths:
-        pages = extract_pdf_pages(file_path)
+        pages = extract_pdf_text(file_path)
 
         for page in pages:
-            chunks = splitter.split_text(page["text"])
+            chunks = chunk_text(page["text"])
 
             for chunk in chunks:
-                texts.append(chunk)
+                documents.append(chunk)
                 metadatas.append({
                     "source": page["source"],
                     "page": page["page"],
                 })
 
-    if not texts:
+    if not documents:
         return {
             "status": "failed",
             "message": "No readable text found in uploaded PDFs.",
             "chunks": 0,
         }
 
-    Chroma.from_texts(
-        texts=texts,
-        embedding=get_embedding_model(),
-        metadatas=metadatas,
-        collection_name=COLLECTION_NAME,
-        persist_directory=CHROMA_PATH,
-    )
+    vectorizer = TfidfVectorizer(stop_words="english")
+    matrix = vectorizer.fit_transform(documents)
+
+    os.makedirs(os.path.dirname(INDEX_PATH), exist_ok=True)
+
+    with open(INDEX_PATH, "wb") as f:
+        pickle.dump(
+            {
+                "vectorizer": vectorizer,
+                "matrix": matrix,
+                "documents": documents,
+                "metadatas": metadatas,
+            },
+            f,
+        )
 
     return {
         "status": "success",
         "message": f"{len(file_paths)} file(s) indexed successfully.",
-        "chunks": len(texts),
+        "chunks": len(documents),
     }
