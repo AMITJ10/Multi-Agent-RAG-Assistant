@@ -52,25 +52,32 @@ with st.sidebar:
                     )
 
                 try:
-                    with st.spinner("Indexing uploaded documents..."):
+                    with st.spinner("Indexing uploaded documents... This may take 1–3 minutes on free hosting."):
                         response = requests.post(
                             f"{API_URL}/upload",
                             files=files,
-                            timeout=180,
+                            timeout=300,
                         )
 
                     if response.status_code == 200:
                         st.session_state.last_uploaded_files = file_names
                         st.success("Documents uploaded and indexed successfully.")
                     else:
-                        st.error("Upload/indexing failed.")
+                        st.error("Upload/indexing failed. Try a smaller PDF.")
+
+                except requests.exceptions.ReadTimeout:
+                    st.error(
+                        "Indexing is taking too long on the free server. "
+                        "Please try a smaller PDF or wait and try again."
+                    )
 
                 except requests.exceptions.ConnectionError:
                     st.error(
-                        "Backend is not running. Start FastAPI on https://multi-agent-rag-assistant.onrender.com"
+                        "Backend is not reachable. Please check whether Render backend is running."
                     )
-            # else:
-            #     st.info("Documents already indexed.")
+
+                except Exception as e:
+                    st.error(f"Unexpected upload error: {str(e)}")
 
             if st.button("Re-index Documents"):
                 st.session_state.last_uploaded_files = []
@@ -89,14 +96,14 @@ if st.button("Ask AI"):
                 response = requests.post(
                     f"{API_URL}/chat",
                     json={"question": question},
-                    timeout=180,
+                    timeout=120,
                 )
 
             if response.status_code == 200:
                 data = response.json()
 
                 st.subheader("Final Answer")
-                st.success(data["answer"])
+                st.success(data.get("answer", "No answer returned."))
 
                 next_questions = data.get("next_questions", [])
 
@@ -106,9 +113,18 @@ if st.button("Ask AI"):
                     for q in next_questions:
                         st.write(f"👉 {q}")
             else:
-                st.error("Something went wrong.")
+                st.error("Something went wrong while getting the answer.")
+
+        except requests.exceptions.ReadTimeout:
+            st.error(
+                "The backend is taking too long to answer. "
+                "Please try again or ask a shorter question."
+            )
 
         except requests.exceptions.ConnectionError:
             st.error(
-                "Backend is not running. Start FastAPI on http://127.0.0.1:8000"
+                "Backend is not reachable. Please check whether Render backend is running."
             )
+
+        except Exception as e:
+            st.error(f"Unexpected chat error: {str(e)}")
